@@ -6,7 +6,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pymongo import MongoClient, ReturnDocument
 
-MONGO_URI = os.getenv('MONGODB_URI', 'mongodb://localhost:27017')
+MONGO_URI = os.getenv(
+    'MONGODB_URI',
+    'mongodb://root:6b8f966a7b0448f8@47.84.177.254:27017/?authSource=admin'
+)
 DB_NAME = os.getenv('MONGODB_DB', 'red_user')
 
 client = MongoClient(MONGO_URI)

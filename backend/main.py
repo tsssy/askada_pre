@@ -1,7 +1,10 @@
 import os
 from datetime import datetime, timezone
 
-from fastapi import FastAPI
+import re
+from urllib.parse import urlparse
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from pymongo import MongoClient, ReturnDocument
@@ -29,14 +32,36 @@ app.add_middleware(
 
 
 class VisitIn(BaseModel):
-    subreddit: str = Field(min_length=1, max_length=200)
+    subreddit: str = Field(default='unknown', max_length=200)
+
+
+def _extract_subreddit_from_referer(referer: str) -> str:
+    if not referer:
+        return ''
+    try:
+        parsed = urlparse(referer)
+        path = parsed.path or ''
+    except ValueError:
+        return ''
+
+    match = re.search(r'/r/([^/]+)/', path)
+    if match:
+        return match.group(1)
+    return ''
 
 
 @app.post('/api/visit')
-def create_visit(payload: VisitIn):
-    subreddit = payload.subreddit.strip().lower()
-    if not subreddit:
-        subreddit = 'unknown'
+def create_visit(payload: VisitIn, request: Request):
+    subreddit = (payload.subreddit or '').strip().lower()
+    referer = request.headers.get('referer', '')
+    referer_host = ''
+    if referer:
+        try:
+            referer_host = urlparse(referer).hostname or ''
+        except ValueError:
+            referer_host = ''
+    if not subreddit or subreddit == 'unknown':
+        subreddit = _extract_subreddit_from_referer(referer).strip().lower() or 'unknown'
 
     counter = counters.find_one_and_update(
         {'_id': subreddit},
@@ -49,6 +74,7 @@ def create_visit(payload: VisitIn):
     visits.insert_one({
         'subreddit': subreddit,
         'visitor_index': visitor_index,
+        'referer_host': referer_host,
         'created_at': datetime.now(timezone.utc)
     })
 

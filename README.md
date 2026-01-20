@@ -31,5 +31,5 @@ Visit:
 ## Data
 
 MongoDB database: `red_user`
-- `visits` collection stores each visit with `subreddit` and `visitor_index`.
+- `visits` collection stores each visit with `subreddit`, `visitor_index`, and `referer_host`.
 - `counters` collection stores per-subreddit sequence counters.

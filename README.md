@@ -32,4 +32,5 @@ Visit:
 
 MongoDB database: `red_user`
 - `visits` collection stores each visit with `subreddit`, `visitor_index`, `referer_host`, and `referer_url`.
+- Extra fields: `origin`, `page_url`, `source_tag`, `source_param`.
 - `counters` collection stores per-subreddit sequence counters.

@@ -19,12 +19,14 @@ const statusText = ref('We are building something fresh.');
 onMounted(async () => {
   const params = new URLSearchParams(window.location.search);
   const subreddit = params.get('subreddit') || 'unknown';
+  const source =
+    params.get('source') || params.get('utm_source') || params.get('ref') || '';
 
   try {
     const res = await fetch('/api/visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subreddit })
+      body: JSON.stringify({ subreddit, source, page_url: window.location.href })
     });
 
     if (!res.ok) {

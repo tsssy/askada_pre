@@ -2,7 +2,8 @@ import os
 from datetime import datetime, timezone
 
 import re
-from urllib.parse import urlparse
+from typing import Optional
+from urllib.parse import parse_qs, urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +34,8 @@ app.add_middleware(
 
 class VisitIn(BaseModel):
     subreddit: str = Field(default='unknown', max_length=200)
+    source: Optional[str] = Field(default=None, max_length=200)
+    page_url: Optional[str] = Field(default=None, max_length=2000)
 
 
 def _extract_subreddit_from_referer(referer: str) -> str:
@@ -50,12 +53,24 @@ def _extract_subreddit_from_referer(referer: str) -> str:
     return ''
 
 
+def _extract_source_from_params(params) -> str:
+    for key in ('source', 'utm_source', 'ref', 'referrer'):
+        value = params.get(key)
+        if value:
+            return value
+    return ''
+
+
 @app.post('/api/visit')
 def create_visit(payload: VisitIn, request: Request):
     subreddit = (payload.subreddit or '').strip().lower()
     referer = request.headers.get('referer', '')
     referer_host = ''
     referer_url = referer
+    origin = request.headers.get('origin', '')
+    page_url = (payload.page_url or '').strip()
+    source_tag = (payload.source or '').strip()
+    source_param = ''
     if referer:
         try:
             parsed_referer = urlparse(referer)
@@ -65,6 +80,18 @@ def create_visit(payload: VisitIn, request: Request):
                 referer_host = parsed_referer.hostname or ''
         except ValueError:
             referer_host = ''
+    if not source_tag:
+        source_param = _extract_source_from_params(request.query_params)
+        if not source_param and page_url:
+            try:
+                parsed_page = urlparse(page_url)
+                page_params = parse_qs(parsed_page.query or '')
+                source_param = _extract_source_from_params({
+                    key: values[0] for key, values in page_params.items() if values
+                })
+            except ValueError:
+                source_param = ''
+        source_tag = source_param
     if not subreddit or subreddit == 'unknown':
         subreddit = _extract_subreddit_from_referer(referer).strip().lower() or 'unknown'
 
@@ -81,6 +108,10 @@ def create_visit(payload: VisitIn, request: Request):
         'visitor_index': visitor_index,
         'referer_host': referer_host,
         'referer_url': referer_url,
+        'origin': origin,
+        'page_url': page_url,
+        'source_tag': source_tag,
+        'source_param': source_param,
         'created_at': datetime.now(timezone.utc)
     })
 

@@ -55,9 +55,14 @@ def create_visit(payload: VisitIn, request: Request):
     subreddit = (payload.subreddit or '').strip().lower()
     referer = request.headers.get('referer', '')
     referer_host = ''
+    referer_url = referer
     if referer:
         try:
-            referer_host = urlparse(referer).hostname or ''
+            parsed_referer = urlparse(referer)
+            if parsed_referer.scheme and parsed_referer.netloc:
+                referer_host = f'{parsed_referer.scheme}://{parsed_referer.netloc}'
+            else:
+                referer_host = parsed_referer.hostname or ''
         except ValueError:
             referer_host = ''
     if not subreddit or subreddit == 'unknown':
@@ -75,6 +80,7 @@ def create_visit(payload: VisitIn, request: Request):
         'subreddit': subreddit,
         'visitor_index': visitor_index,
         'referer_host': referer_host,
+        'referer_url': referer_url,
         'created_at': datetime.now(timezone.utc)
     })
 
